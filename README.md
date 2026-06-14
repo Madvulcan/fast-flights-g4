@@ -1,22 +1,42 @@
 # fast-flights-g4
 
-A companion package to [fast-flights](https://github.com/AWeirdDev/flights) that adds **Allegiant (G4)** flight data to search results.
+A companion package to [fast-flights](https://github.com/AWeirdDev/flights) that adds **Allegiant (G4)**, **Icelandair (FI)**, **Zipair (ZG)**, and other carriers that fast-flights misses by deep-scanning Google Flights' `payload[2]` protobuf structure.
 
 ## What It Adds
 
-fast-flights v3.0 parses `payload[3]` from Google Flights, which contains data for major carriers (Delta, American, Southwest, United, Frontier). However, Google stores Allegiant flight data in a separate part of the response (`payload[2]`) that fast-flights does not parse.
+fast-flights v3.0 parses `payload[3]` from Google Flights, which contains data for major carriers (Delta, American, Southwest, United, Frontier). However, Google stores some carrier data — including Allegiant and select international carriers — in `payload[2]` which fast-flights does not parse.
 
-This package fills that gap. It deep-scans `payload[2]` to extract Allegiant flights and merges them with the results from fast-flights.
+This package deep-scans `payload[2]` to extract those carriers and merges them with fast-flights results.
 
 ### Carrier Coverage
 
 | Carrier | fast-flights v3.0 | fast-flights-g4 |
 |---------|-------------------|-----------------|
-| DL, AA, WN, UA | Yes | Yes |
-| F9 (Frontier) | Yes (v3.0+) | Yes |
-| G4 (Allegiant) | **Missing** | **Yes** |
+| DL, AA, WN, UA, F9 | Yes | Yes |
+| G4 (Allegiant) | **No** | **Yes** |
+| FI (Icelandair) | **No** | **Yes** |
+| ZG (Zipair) | **No** | **Yes** |
+| Other payload[2] carriers | **No** | **Yes** |
 
-**Example:** Searching TYS→LAS returns 3 flights with fast-flights alone. With fast-flights-g4, you get 5 — including the Allegiant nonstop at $395, which is the cheapest option.
+**The deep-scan approach:** Google's `payload[2]` structure is undocumented and inconsistent — different carriers appear at different nesting depths with different formats. Rather than guessing the structure, we recursively walk the entire tree and find all 25-element arrays matching the flight leg pattern.
+
+### Example: TYS→LAS
+
+```
+$230: F9  1847 (1 stop)   ← fast-flights v3.0
+$395: G4  92   (nonstop)  ← deep-scan only (Allegiant)
+$434: DL  5279 (1 stop)   ← fast-flights v3.0
+$434: AA  6003 (1 stop)   ← fast-flights v3.0
+$477: WN  1801 (1 stop)   ← fast-flights v3.0
+```
+
+Without this package, the Allegiant nonstop is invisible.
+
+### Example: JFK→LHR
+
+```
+$415: FI  614  (nonstop)  ← deep-scan only (Icelandair)
+```
 
 ## Installation
 
@@ -37,15 +57,6 @@ for r in results:
     print(f"${r.price}: {r.airline} {r.flight_number} ({r.stops} stops)")
 ```
 
-Output:
-```
-$230.0: F9 1847 (1 stops)
-$395.0: G4 92 (0 stops)
-$434.0: DL 5279 (1 stops)
-$434.0: AA 6003 (1 stops)
-$477.0: WN 1801 (1 stops)
-```
-
 ### Lower-level API
 
 ```python
@@ -57,18 +68,10 @@ results = parser.parse(html, query)
 
 ## Under the Hood
 
-1. `search_flights()` fetches Google Flights HTML via fast-flights
-2. Fast-flights v3.0 parses `payload[3]` for major carriers (DL, AA, WN, UA, F9)
-3. A deep-scan recursive walker searches `payload[2]` for Allegiant leg entries
-4. Results are merged, deduplicated, and sorted by price
-
-G4 flights are found inside `price_data[0]` as 25-element arrays where `leg[9]` is the price — a structure that differs completely from how other carriers store their data.
-
-## Allegiant Notes
-
-- Only serves select routes (TYS, ATL, and a few other hubs)
-- Typically the cheapest option when present
-- Does not appear on international routes
+1. Fetches Google Flights HTML via fast-flights
+2. fast-flights v3.0 parses `payload[3]` for major carriers
+3. A deep-scan recursive walker searches `payload[2]` for additional carriers
+4. Results are merged, deduplicated by (airline, flight_number), and sorted by price
 
 ## Dependencies
 

@@ -1,11 +1,11 @@
 ---
 name: fast-flights-g4
-description: Search Google Flights with Allegiant (G4) support. Companion to fast-flights that adds G4 via deep-scan protobuf parsing. Use when searching for flights — especially on routes served by Allegiant (TYS, ATL, and other leisure/budget destinations). Returns FlightResult objects with G4 results included alongside major carriers.
+description: Search Google Flights with extended carrier support. Companion to fast-flights that adds Allegiant (G4), Icelandair (FI), Zipair (ZG), and other carriers via deep-scan protobuf parsing. Use when searching for flights — especially on routes served by Allegiant (TYS, ATL, and other leisure/budget destinations) or select international routes. Returns FlightResult objects with additional carriers included alongside major carriers.
 ---
 
 # fast-flights-g4
 
-Companion package to [fast-flights](https://github.com/AWeirdDev/flights) that adds **Allegiant (G4)** flight data to search results. fast-flights alone misses Allegiant entirely — this package catches them.
+Companion package to [fast-flights](https://github.com/AWeirdDev/flights) that adds carriers fast-flights misses by deep-scanning Google Flights' `payload[2]` protobuf structure.
 
 ## Installation
 
@@ -19,7 +19,7 @@ Dependencies (`fast-flights>=3.0`, `selectolax`) install automatically.
 
 1. Fetches Google Flights HTML via fast-flights (same as using fast-flights directly)
 2. fast-flights v3.0 parses payload[3] for major carriers (DL, AA, WN, UA, F9)
-3. Deep-scans payload[2] to extract Allegiant (G4) leg entries
+3. Deep-scans payload[2] for additional carriers (G4, FI, ZG, and others)
 4. Merges both result sets, deduplicates, sorts by price
 
 ## Quick Start
@@ -32,7 +32,16 @@ for r in results:
     print(f"${r.price}: {r.airline} {r.flight_number}")
 ```
 
-Where fast-flights alone returns 3 results (DL, AA, WN), this returns 5 — adding F9 and the Allegiant nonstop, which is often the cheapest option.
+## Carriers Added
+
+| Carrier | Airline | Notes |
+|---------|---------|-------|
+| G4 | Allegiant Air | US leisure/budget carrier; TYS, ATL, LAS hubs |
+| FI | Icelandair | JFK→LHR and other transatlantic routes |
+| ZG | Zipair | Japanese LCC (JAL subsidiary); transpacific |
+| DM | Arajet | Caribbean/South America; via PUJ |
+
+Additional carriers may appear in payload[2] depending on route and date.
 
 ## Lower-Level API
 
@@ -43,15 +52,9 @@ parser = GoogleFlightsParser()
 results = parser.parse(html, query)  # pass fast-flights query object
 ```
 
-## G4-Specific Notes
-
-- Allegiant only serves select leisure routes (TYS, ATL, and a few hubs)
-- When present, G4 is typically the cheapest option by a wide margin
-- G4 does not appear on international routes
-- G4 data lives inside `price_data[0]` as a 25-element array where `leg[9]` is the price (not duration) — completely different structure from other carriers
-
 ## When to Use
 
-- Always prefer this over raw fast-flight for US domestic searches
+- Always prefer this over raw fast-flights for domestic US searches
 - Critical for routes from TYS, ATL, PIE, LAS, and other Allegiant bases
+- Useful for international routes where fast-flights may miss carriers (FI on transatlantic, ZG on transpacific)
 - Drop-in replacement where fast-flights `get_flights()` is used
