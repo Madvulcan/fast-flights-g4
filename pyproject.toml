@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fast-flights-g4"
+version = "0.1.0"
+description = "Companion package to fast-flights that adds Allegiant (G4) flight data via deep-scan protobuf parsing"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "fast-flights>=3.0",
+    "selectolax>=0.3.20",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fast_flights_g4"]
