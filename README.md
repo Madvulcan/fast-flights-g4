@@ -2,6 +2,8 @@
 
 A companion package to [fast-flights](https://github.com/AWeirdDev/flights) that adds **Allegiant (G4)**, **Icelandair (FI)**, **Zipair (ZG)**, and other carriers that fast-flights misses by deep-scanning Google Flights' `payload[2]` protobuf structure.
 
+The package was named fast-flights-g4 because the original scope was to add Allegiant flights to the results specifically, but other carriers have been added since.
+
 ## What It Adds
 
 fast-flights v3.0 parses `payload[3]` from Google Flights, which contains data for major carriers (Delta, American, Southwest, United, Frontier). However, Google stores some carrier data — including Allegiant and select international carriers — in `payload[2]` which fast-flights does not parse.
