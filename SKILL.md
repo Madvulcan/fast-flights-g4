@@ -58,3 +58,34 @@ results = parser.parse(html, query)  # pass fast-flights query object
 - Critical for routes from TYS, ATL, PIE, LAS, and other Allegiant bases
 - Useful for international routes where fast-flights may miss carriers (FI on transatlantic, ZG on transpacific)
 - Drop-in replacement where fast-flights `get_flights()` is used
+
+## Presenting Results & Booking
+
+`FlightResult` objects carry **no booking URL** — only price, airline, stops, schedule, and confidence. Booking must go through Google Flights directly.
+
+**Google Flights does not support deep-linking.** URLs with `?q=...` query parameters do not pre-populate the search form. There is no reliable URL that opens Google Flights with a specific route and date pre-filled.
+
+### Round-trip workflow
+
+`search_flights()` only does one-way queries. For round-trips:
+
+1. **Search each leg separately** — `search_flights(origin, dest, dep_date)` and `search_flights(dest, origin, ret_date)`
+2. **Pick the cheapest** (or fewest stops) on each leg
+3. **Sum the two prices** for a total estimate
+4. **Present booking guidance** alongside the price breakdown (see format below)
+
+### Presentation format
+
+```
+🛫 Outbound: DATE — Airline $PRICE (N stops)
+🔙 Return:   DATE — Airline $PRICE (N stops)
+💰 Total:    $TOTAL
+🔗 Book:     https://www.google.com/travel/flights
+             Route: ORIG → DEST  |  Depart: DATE  |  Return: DATE  |  1 adult
+```
+
+If multiple airports serve the destination area, search all of them, show the cheapest per airport, and note drive times so the user can weigh price vs. convenience.
+
+### Suppressing stderr noise
+
+Many searches produce `stderr` messages like `"Legacy parse also failed: 'NoneType' object is not subscriptable"`. These are harmless — the deep-scan fallback fails while the v3.0 engine still returns valid results. Filter or ignore these lines; do not surface them to the user.
