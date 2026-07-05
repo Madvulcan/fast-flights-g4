@@ -17,10 +17,10 @@ Dependencies (`fast-flights>=3.0`, `selectolax`) install automatically.
 
 ## How It Works
 
-1. Fetches Google Flights HTML via fast-flights (same as using fast-flights directly)
+1. Fetches Google Flights HTML via fast-flights (with optional proxy/integration)
 2. fast-flights v3.0 parses payload[3] for major carriers (DL, AA, WN, UA, F9)
 3. Deep-scans payload[2] for additional carriers (G4, FI, ZG, and others)
-4. Merges both result sets, deduplicates, sorts by price
+4. Merges both result sets, deduplicates by normalized flight key, sorts by price
 
 ## Quick Start
 
@@ -30,6 +30,23 @@ from fast_flights_g4 import search_flights
 results = search_flights('TYS', 'LAS', '2026-06-19')
 for r in results:
     print(f"${r.price}: {r.airline} {r.flight_number}")
+```
+
+## Full API
+
+```python
+results = search_flights(
+    origin='TYS',
+    dest='LAS',
+    date='2026-06-19',
+    adults=2,
+    seat='economy',           # economy, premium-economy, business, first
+    language='en-US',         # Response language
+    currency='USD',           # Price currency
+    max_stops=1,              # Maximum stops filter
+    proxy=None,               # HTTP proxy URL
+    integration=None,         # BrightData or other FetchIntegration
+)
 ```
 
 ## Carriers Added
@@ -58,6 +75,21 @@ results = parser.parse(html, query)  # pass fast-flights query object
 - Critical for routes from TYS, ATL, PIE, LAS, and other Allegiant bases
 - Useful for international routes where fast-flights may miss carriers (FI on transatlantic, ZG on transpacific)
 - Drop-in replacement where fast-flights `get_flights()` is used
+
+## FlightResult Fields
+
+| Field | Type | Notes |
+|-------|------|-------|
+| airline | str | Airline display name (e.g., 'Allegiant') or code |
+| flight_number | str | Best available identifier; deep-scan gives real numbers (e.g., 'G4 92'), v3.0 gives airline code (e.g., 'DL') |
+| origin | str | IATA code (e.g., 'TYS') |
+| destination | str | IATA code (e.g., 'LAS') |
+| departure | datetime | Actual departure datetime |
+| arrival | datetime | Actual arrival datetime |
+| duration_min | int | Total duration in minutes |
+| stops | int | Number of stops |
+| price | float | Price in requested currency |
+| confidence | float | 0.5–1.0; 1.0 = v3.0 direct, 0.9 = deep-scan, 0.5 = uncertain price |
 
 ## Presenting Results & Booking
 
@@ -89,3 +121,8 @@ If multiple airports serve the destination area, search all of them, show the ch
 ### Suppressing stderr noise
 
 Many searches produce `stderr` messages like `"Legacy parse also failed: 'NoneType' object is not subscriptable"`. These are harmless — the deep-scan fallback fails while the v3.0 engine still returns valid results. Filter or ignore these lines; do not surface them to the user.
+
+## Known Limitations
+
+- **Flight numbers from v3.0**: When a flight comes from payload[3] via fast-flights (multi-stop itineraries, common carriers), the v3.0 model doesn't expose individual flight numbers per leg. `flight_number` will be the airline code (e.g., 'AA') rather than a specific number (e.g., 'AA 6003'). Deep-scan results from payload[2] do have real flight numbers.
+- **Multi-airline itineraries**: These show `flight_number='multi'` and `airline` as a concatenation (e.g., 'American+Alaska').
